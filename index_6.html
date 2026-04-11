@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TUEM — Gestión financiera</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8f8f6;color:#1a1a1a;font-size:14px}
+.app{max-width:1100px;margin:0 auto;padding:1rem}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:8px;padding:1rem 1.25rem;background:#fff;border-radius:12px;border:0.5px solid #e0e0d8}
+.nav{display:flex;gap:6px;margin-bottom:1.5rem;flex-wrap:wrap}
+.nav button{font-size:13px;padding:6px 14px;border-radius:20px;border:0.5px solid #ccc;background:transparent;color:#666;cursor:pointer}
+.nav button.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.nav button:hover:not(.active){background:#f0f0ec}
+.sec{display:none}.sec.active{display:block}
+.mg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
+.mc{background:#f0f0ec;border-radius:8px;padding:12px 14px}
+.mc .ml{font-size:12px;color:#888;margin-bottom:4px}
+.mc .mv{font-size:20px;font-weight:500;color:#1a1a1a}
+.mc .ms{font-size:11px;color:#888;margin-top:2px}
+.mc.ok .mv{color:#1D9E75}.mc.warn .mv{color:#BA7517}.mc.bad .mv{color:#E24B4A}
+.card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem}
+.ct{font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px}
+table{width:100%;font-size:13px;border-collapse:collapse}
+th{text-align:left;font-weight:500;color:#888;font-size:12px;padding:6px 8px;border-bottom:0.5px solid #e8e8e0}
+td{padding:8px;border-bottom:0.5px solid #e8e8e0;color:#1a1a1a}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.bg{background:#EAF3DE;color:#3B6D11}.br{background:#FCEBEB;color:#A32D2D}
+.ba{background:#FAEEDA;color:#854F0B}.bb{background:#E6F1FB;color:#185FA5}
+.bgr{background:#f0f0ec;color:#666}.bpurp{background:#EEEDFE;color:#3C3489}
+.btn{display:inline-block;font-size:13px;padding:7px 14px;border-radius:8px;border:0.5px solid #ccc;background:transparent;color:#1a1a1a;cursor:pointer}
+.btn:hover{background:#f0f0ec}
+.btn-prim{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.btn-prim:hover{opacity:.85}
+.btn-ok{background:#EAF3DE;color:#3B6D11;border-color:#C0DD97}
+input,select,textarea{font-size:13px;padding:7px 10px;border-radius:8px;border:0.5px solid #ccc;background:#fff;color:#1a1a1a;font-family:inherit;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:#888;margin-bottom:4px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.empty{text-align:center;padding:1.5rem;color:#888;font-size:13px}
+.ovw{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:0.5px solid #e8e8e0}
+.ovw:last-child{border-bottom:none}
+.ovw-l{flex:1;font-size:13px}
+.ovw-v{font-size:13px;font-weight:500;min-width:90px;text-align:right}
+.ovw-v.ok{color:#1D9E75}.ovw-v.bad{color:#E24B4A}.ovw-v.warn{color:#BA7517}.ovw-v.purp{color:#3C3489}
+.tablero{border-collapse:collapse;font-size:11px;width:100%;min-width:600px}
+.tablero th{font-size:10px;padding:5px 3px;text-align:center;border:0.5px solid #e0e0d8;color:#888;white-space:nowrap;background:#f8f8f6;min-width:52px}
+.tablero th.th-n{text-align:left;min-width:150px;padding-left:8px;font-size:11px}
+.tablero td{padding:3px;border:0.5px solid #e0e0d8;text-align:center;vertical-align:middle}
+.tablero td.td-n{text-align:left;padding:6px 8px;font-weight:500;white-space:nowrap;font-size:12px}
+.tablero td.td-g{font-weight:500;font-size:11px;color:#888;background:#f8f8f6;padding:7px 8px;text-align:left}
+.tc{width:40px;height:26px;border-radius:3px;cursor:pointer;border:none;transition:background .12s;display:block;margin:auto}
+.tc.hecho{background:#1D9E75}.tc.pendiente{background:#E24B4A}
+.cli-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:10px;margin-bottom:1rem}
+.cli-card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:14px;cursor:pointer;transition:border-color .15s}
+.cli-card:hover{border-color:#999}
+.cli-card.inactivo{opacity:.5}
+.modal-bg{background:rgba(0,0,0,.35);position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:100;padding:1rem}
+.modal{background:#fff;border-radius:12px;border:0.5px solid #e0e0d8;padding:1.25rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+.modal-hidden{display:none}
+.info-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid #e8e8e0;font-size:13px}
+.info-row:last-child{border-bottom:none}
+.info-row .il{color:#888}
+.arr-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:0.5px solid #e8e8e0;flex-wrap:wrap}
+.arr-row:last-child{border-bottom:none}
+.saving{position:fixed;bottom:1rem;right:1rem;background:#1a1a1a;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .3s;z-index:200;pointer-events:none}
+.saving.show{opacity:1}
+@media(max-width:600px){.two-col{grid-template-columns:1fr}.mg{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="topbar">
+  <div>
+    <div style="font-size:20px;font-weight:500">TUEM</div>
+    <div style="font-size:12px;color:#888">Gestión financiera · desde Abril 2026</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <select id="sel-mes" onchange="cambiarMes()" style="width:auto;font-size:13px;padding:5px 10px">
+      <option value="3" selected>Abril 2026</option>
+      <option value="4">Mayo 2026</option>
+      <option value="5">Junio 2026</option>
+      <option value="6">Julio 2026</option>
+      <option value="7">Agosto 2026</option>
+      <option value="8">Septiembre 2026</option>
+      <option value="9">Octubre 2026</option>
+      <option value="10">Noviembre 2026</option>
+      <option value="11">Diciembre 2026</option>
+    </select>
+    <span id="sync-status" style="font-size:12px;color:#888">Cargando...</span>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="active" onclick="tab('cobros',this)">Cobros</button>
+  <button onclick="tab('arrastres',this)">Pendientes ant.</button>
+  <button onclick="tab('tareas',this)">Tareas</button>
+  <button onclick="tab('clientes',this)">Clientes</button>
+  <button onclick="tab('extras',this)">Ingresos extra</button>
+  <button onclick="tab('gastos',this)">Gastos</button>
+  <button onclick="tab('resumen',this)">Resumen</button>
+</div>
+
+<div id="sec-cobros" class="sec active">
+  <div class="mg">
+    <div class="mc ok"><div class="ml">Cobrado</div><div class="mv" id="tc-cob">$0</div></div>
+    <div class="mc warn"><div class="ml">Pendiente del mes</div><div class="mv" id="tc-pen">$0</div></div>
+    <div class="mc" style="border:0.5px solid #CECBF6"><div class="ml">Cobrado meses ant.</div><div class="mv" id="tc-arr" style="color:#3C3489">$0</div></div>
+    <div class="mc"><div class="ml">% cobrado</div><div class="mv" id="tc-pct">0%</div></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div class="ct" style="margin-bottom:0">Clientes activos — <span id="mes-lbl">Abril</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <select id="fil-area" onchange="renderCobros()" style="width:auto;font-size:12px;padding:4px 8px"><option value="">Todas las áreas</option><option value="Marketing">Marketing</option><option value="Contabilidad">Contabilidad</option></select>
+        <select id="fil-est" onchange="renderCobros()" style="width:auto;font-size:12px;padding:4px 8px"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="cobrado">Cobrados</option></select>
+      </div>
+    </div>
+    <div style="overflow-x:auto"><table><thead><tr><th>Cliente</th><th>Grupo</th><th style="text-align:right">Importe</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="tbody-cobros"></tbody></table></div>
+  </div>
+</div>
+
+<div id="sec-arrastres" class="sec">
+  <div class="mg">
+    <div class="mc warn"><div class="ml">Sin cobrar de meses ant.</div><div class="mv" id="arr-pend">$0</div></div>
+    <div class="mc ok"><div class="ml">Cobrado de meses ant.</div><div class="mv" id="arr-cob">$0</div><div class="ms">ingresó este mes</div></div>
+    <div class="mc"><div class="ml">Total arrastrado</div><div class="mv" id="arr-tot">$0</div></div>
+  </div>
+  <div style="background:#f8f8f6;border-radius:8px;padding:10px 14px;font-size:13px;color:#888;margin-bottom:1rem">Al marcar "Cobrado" acá, el importe se suma a los ingresos del mes actual con la etiqueta del mes de origen.</div>
+  <div class="card"><div class="ct">Cobros recurrentes pendientes</div><div id="lista-arr-rec"><div class="empty">Sin pendientes</div></div></div>
+  <div class="card"><div class="ct">Ingresos extra pendientes</div><div id="lista-arr-ext"><div class="empty">Sin pendientes</div></div></div>
+</div>
+
+<div id="sec-tareas" class="sec">
+  <div class="mg">
+    <div class="mc ok"><div class="ml">Completadas</div><div class="mv" id="th">0</div></div>
+    <div class="mc bad"><div class="ml">Pendientes</div><div class="mv" id="tp">0</div></div>
+    <div class="mc"><div class="ml">Total</div><div class="mv" id="tt">0</div></div>
+    <div class="mc"><div class="ml">% completado</div><div class="mv" id="tpct">0%</div></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div class="ct" style="margin-bottom:0">Tablero mensual — click para marcar hecho</div>
+      <div style="display:flex;gap:10px;font-size:12px;color:#888">
+        <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#1D9E75;display:inline-block"></span>Hecho</span>
+        <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:#E24B4A;display:inline-block"></span>Pendiente</span>
+      </div>
+    </div>
+    <div style="overflow-x:auto"><table class="tablero" id="tablero"></table></div>
+  </div>
+</div>
+
+<div id="sec-clientes" class="sec">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div class="ct" style="margin-bottom:0">Clientes — <span id="cant-cli">0</span> activos</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="buscar-cli" placeholder="Buscar..." style="width:140px;font-size:12px;padding:5px 9px" oninput="renderCliGrid()">
+      <select id="fil-area-cli" onchange="renderCliGrid()" style="width:auto;font-size:12px;padding:4px 8px"><option value="">Todas</option><option value="Marketing">Marketing</option><option value="Contabilidad">Contabilidad</option></select>
+      <select id="fil-est-cli" onchange="renderCliGrid()" style="width:auto;font-size:12px;padding:4px 8px"><option value="activo">Solo activos</option><option value="">Todos</option><option value="inactivo">Solo bajas</option></select>
+      <button class="btn btn-prim" style="font-size:12px;padding:5px 12px;width:auto" onclick="abrirForm(null)">+ Nuevo</button>
+    </div>
+  </div>
+  <div id="cli-grid" class="cli-grid"></div>
+  <div id="ficha-bg" class="modal-bg modal-hidden">
+    <div class="modal">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:16px;font-weight:500" id="ficha-title">Ficha</div>
+        <button class="btn" style="padding:4px 10px;font-size:12px;width:auto" onclick="cerrarFicha()">Cerrar</button>
+      </div>
+      <div id="ficha-body"></div>
+    </div>
+  </div>
+  <div id="form-bg" class="modal-bg modal-hidden">
+    <div class="modal">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:16px;font-weight:500" id="form-title">Nuevo cliente</div>
+        <button class="btn" style="padding:4px 10px;font-size:12px;width:auto" onclick="cerrarForm()">Cancelar</button>
+      </div>
+      <div class="two-col"><div class="field"><label>Nombre</label><input id="f-nombre"></div><div class="field"><label>CUIT</label><input id="f-cuit"></div></div>
+      <div class="two-col">
+        <div class="field"><label>Área</label><select id="f-area"><option value="Contabilidad">Contabilidad</option><option value="Marketing">Marketing</option></select></div>
+        <div class="field"><label>Grupo / servicio</label>
+          <select id="f-grupo"><option value="marketing">Marketing</option><option value="basico">Monotributo Plan básico</option><option value="basico_sueldos">Monotributo + Sueldos</option><option value="completo">Monotributo Plan completo</option><option value="iibb">Solo DJ Ingresos Brutos</option><option value="iibb_basico">Solo DJ IIBB (IVA)</option><option value="ri">Responsable Inscripto</option><option value="cont_fin">Asesoría Contable + Financiero</option><option value="sociedades">Sociedades</option><option value="asesoria_fin">Asesoría Financiera</option></select>
+        </div>
+      </div>
+      <div class="two-col"><div class="field"><label>Importe mensual ($)</label><input id="f-imp" type="number" placeholder="0"></div><div class="field"><label>Estado</label><select id="f-activo"><option value="activo">Activo</option><option value="inactivo">Baja</option></select></div></div>
+      <div class="two-col"><div class="field"><label>Celular</label><input id="f-cel"></div><div class="field"><label>Email</label><input id="f-email"></div></div>
+      <div class="two-col"><div class="field"><label>Fecha de nacimiento</label><input id="f-nac" type="date"></div><div class="field"><label>Fecha de inicio</label><input id="f-inicio" type="date"></div></div>
+      <div class="field"><label>Notas</label><textarea id="f-notas" rows="2"></textarea></div>
+      <button class="btn btn-prim" style="width:100%;margin-top:4px" onclick="guardarCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="sec-extras" class="sec">
+  <div class="mg">
+    <div class="mc ok"><div class="ml">Cobrado</div><div class="mv" id="ex-cob">$0</div></div>
+    <div class="mc warn"><div class="ml">Pendiente</div><div class="mv" id="ex-pen">$0</div></div>
+    <div class="mc"><div class="ml">Total</div><div class="mv" id="ex-tot">$0</div></div>
+    <div class="mc"><div class="ml">Cantidad</div><div class="mv" id="ex-cant">0</div></div>
+  </div>
+  <div class="card">
+    <div class="ct">Registrar ingreso extra</div>
+    <div class="two-col">
+      <div class="field"><label>Tipo</label><select id="ex-tipo"><option>Alta monotributo</option><option>Baja monotributo</option><option>Certificación de ingresos</option><option>Consulta</option><option>Regularización fiscal</option><option>Declaración jurada</option><option>Trámite AFIP</option><option>Otro</option></select></div>
+      <div class="field"><label>Importe ($)</label><input type="number" id="ex-imp" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Cliente / descripción</label><input type="text" id="ex-desc"></div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
+      <label style="font-size:13px;width:auto">Estado:</label>
+      <label style="font-size:13px;cursor:pointer;width:auto;display:flex;align-items:center;gap:4px"><input type="radio" name="ex-est" value="pendiente" style="width:auto" checked> Pendiente</label>
+      <label style="font-size:13px;cursor:pointer;width:auto;display:flex;align-items:center;gap:4px"><input type="radio" name="ex-est" value="cobrado" style="width:auto"> Ya cobrado</label>
+    </div>
+    <button class="btn btn-prim" style="width:auto" onclick="agregarExtra()">Registrar</button>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="ct" style="margin-bottom:0">Historial del mes</div>
+      <select id="ex-fil" onchange="renderExtras()" style="width:auto;font-size:12px;padding:4px 8px"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="cobrado">Cobrados</option></select>
+    </div>
+    <div id="lista-extra"><div class="empty">Sin ingresos extra</div></div>
+  </div>
+</div>
+
+<div id="sec-gastos" class="sec">
+  <div class="mg">
+    <div class="mc bad"><div class="ml">Gastos empresa</div><div class="mv" id="tot-ge">$0</div></div>
+    <div class="mc bad"><div class="ml">Gastos personales</div><div class="mv" id="tot-gp">$0</div></div>
+    <div class="mc"><div class="ml">Mi sueldo</div><div class="mv" id="sueldo-d">$0</div></div>
+  </div>
+  <div class="card">
+    <div class="ct">Mi sueldo del mes</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input type="number" id="inp-sueldo" placeholder="Importe del sueldo" style="width:200px">
+      <button class="btn btn-prim" style="width:auto" onclick="guardarSueldo()">Guardar</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+    <div>
+      <div class="card">
+        <div class="ct">Gasto empresa</div>
+        <div class="field"><label>Concepto</label><select id="ge-cat"><option>Alquiler oficina</option><option>Expensas oficina</option><option>Luz / servicios</option><option>Telecentro</option><option>Teléfono</option><option>Monotributo TUEM</option><option>Publicidad / plataformas</option><option>Diseñadora gráfica</option><option>Editor de videos</option><option>Comisiones</option><option>Otro</option></select></div>
+        <div class="field"><label>Importe ($)</label><input type="number" id="ge-imp" placeholder="0"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><input type="checkbox" id="ge-pag" style="width:auto"><label for="ge-pag" style="font-size:13px;cursor:pointer;width:auto">Ya pagado</label></div>
+        <button class="btn btn-prim" style="width:100%" onclick="agregarGE()">Agregar</button>
+      </div>
+      <div class="card"><div class="ct">Listado empresa</div><table><thead><tr><th>Concepto</th><th style="text-align:right">Importe</th><th>Est.</th><th></th></tr></thead><tbody id="tbody-ge"></tbody></table><div id="empty-ge" class="empty">Sin gastos</div></div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="ct">Gasto personal</div>
+        <div class="field"><label>Concepto</label><select id="gp-cat"><option>Alquiler</option><option>Expensas</option><option>Luz</option><option>Telecentro</option><option>Celular</option><option>Obra social</option><option>Seguro auto / casa</option><option>Tarjeta Santander</option><option>Préstamo Banco Ciudad</option><option>Pao (colaboradora)</option><option>Recitales / ocio</option><option>Otro</option></select></div>
+        <div class="field"><label>Importe ($)</label><input type="number" id="gp-imp" placeholder="0"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><input type="checkbox" id="gp-pag" style="width:auto"><label for="gp-pag" style="font-size:13px;cursor:pointer;width:auto">Ya pagado</label></div>
+        <button class="btn btn-prim" style="width:100%" onclick="agregarGP()">Agregar</button>
+      </div>
+      <div class="card"><div class="ct">Listado personal</div><table><thead><tr><th>Concepto</th><th style="text-align:right">Importe</th><th>Est.</th><th></th></tr></thead><tbody id="tbody-gp"></tbody></table><div id="empty-gp" class="empty">Sin gastos</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="sec-resumen" class="sec">
+  <div class="mg">
+    <div class="mc ok"><div class="ml">Cobros del mes</div><div class="mv" id="r-cob">$0</div></div>
+    <div class="mc" style="border:0.5px solid #CECBF6"><div class="ml">Cobros meses ant.</div><div class="mv" id="r-arr" style="color:#3C3489">$0</div></div>
+    <div class="mc ok"><div class="ml">Extras cobrados</div><div class="mv" id="r-ext">$0</div></div>
+    <div class="mc bad"><div class="ml">Gastos empresa</div><div class="mv" id="r-ge">$0</div></div>
+    <div class="mc ok"><div class="ml">Utilidad operativa</div><div class="mv" id="r-ut">$0</div></div>
+    <div class="mc"><div class="ml">Mi sueldo</div><div class="mv" id="r-su">$0</div></div>
+    <div class="mc"><div class="ml">Resultado final</div><div class="mv" id="r-fin">$0</div></div>
+  </div>
+  <div class="card"><div class="ct">Flujo completo del mes</div><div id="flujo"></div></div>
+  <div class="card"><div class="ct">Pendiente de cobro este mes</div><div id="pend-mes"></div></div>
+  <div class="card"><div class="ct">Pendiente de meses anteriores</div><div id="pend-hist"></div></div>
+  <div class="card"><div class="ct">Cumpleaños este mes</div><div id="cumples"></div></div>
+</div>
+</div>
+
+<div class="saving" id="saving-toast">Guardando...</div>
+
+<script>
+const SUPABASE_URL='https://vwkgleeysddiiatfafpk.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2dsZWV5c2RkaWlhdGZhZnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3ODM5MDcsImV4cCI6MjA5MTM1OTkwN30.pPg-tcRaelQWaZarr8PkMVdl18qjjKoNF1t5TK27lc4';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let mesActual=3;
+const pesos=n=>'$'+Math.round(n).toLocaleString('es-AR');
+const ini=s=>s?s.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2):'??';
+const TLABEL={mkt:'MKT',af:'AF',vep:'VEP Mono',rec:'Recordatorio',fac:'Facturación',fac2:'Fact. completa',aut:'Autónomo',pib:'Planilla IB',iibb:'DJ IIBB',iva:'DJ IVA',sue:'Sueldos',pp:'Plan pagos'};
+const GRUPOS={
+  marketing:{label:'Marketing',tareas:['mkt']},
+  basico:{label:'Monotributo — Plan básico',tareas:['vep','rec','fac']},
+  basico_sueldos:{label:'Monotributo — Plan básico + Sueldos',tareas:['vep','rec','fac','sue']},
+  completo:{label:'Monotributo — Plan completo',tareas:['fac2','iibb']},
+  iibb:{label:'Solo DJ Ingresos Brutos',tareas:['pib','iibb']},
+  iibb_basico:{label:'Solo DJ IIBB (IVA)',tareas:['iva']},
+  ri:{label:'Responsable Inscripto',tareas:['aut','iibb','iva','sue','pp']},
+  cont_fin:{label:'Asesoría Contable + Financiero',tareas:['aut','iibb','iva','sue','pp']},
+  sociedades:{label:'Sociedades',tareas:['aut','iibb','iva','sue']},
+  asesoria_fin:{label:'Asesoría Financiera',tareas:['af']},
+};
+let clientes=[];
+let estadoMeses={};
+let saveTimer=null;
+
+async function cargarDatos(){
+  setSS('Cargando...');
+  const {data:clis}=await sb.from('clientes').select('*').order('id');
+  if(clis&&clis.length) clientes=clis;
+  const {data:meses}=await sb.from('estado_mes').select('*');
+  if(meses) meses.forEach(m=>{estadoMeses[m.mes]=m;});
+  setSS('Sincronizado');
+  renderAll();
+}
+
+function getE(m){
+  if(!estadoMeses[m]) estadoMeses[m]={mes:m,cobros:{},tareas:{},extra:[],ge:[],gp:[],sueldo:0,arr_rec:{},arr_ext:{}};
+  const e=estadoMeses[m];
+  if(!e.cobros)e.cobros={};if(!e.tareas)e.tareas={};if(!e.extra)e.extra=[];
+  if(!e.ge)e.ge=[];if(!e.gp)e.gp=[];if(!e.arr_rec)e.arr_rec={};if(!e.arr_ext)e.arr_ext={};
+  return e;
+}
+
+function setSS(t){document.getElementById('sync-status').textContent=t;}
+function showToast(){document.getElementById('saving-toast').classList.add('show');}
+function hideToast(){document.getElementById('saving-toast').classList.remove('show');}
+
+async function guardarMes(m){
+  clearTimeout(saveTimer);showToast();
+  saveTimer=setTimeout(async()=>{
+    const e=getE(m);
+    const p={mes:m,cobros:e.cobros,tareas:e.tareas,extra:e.extra,ge:e.ge,gp:e.gp,sueldo:e.sueldo||0,arr_rec:e.arr_rec,arr_ext:e.arr_ext};
+    if(e.id){await sb.from('estado_mes').update(p).eq('id',e.id);}
+    else{const {data}=await sb.from('estado_mes').insert(p).select().single();if(data){estadoMeses[m]={...data,...p};estadoMeses[m].id=data.id;}}
+    setSS('Guardado '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
+    hideToast();
+  },800);
+}
+
+function cambiarMes(){mesActual=parseInt(document.getElementById('sel-mes').value);renderAll();}
+function tab(n,btn){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+n).classList.add('active');btn.classList.add('active');renderAll();
+}
+function renderAll(){renderCobros();renderArrastres();renderTablero();renderCliGrid();renderExtras();renderGastos();renderResumen();}
+
+function calcArrCob(m){
+  const e=getE(m);
+  return Object.keys(e.arr_rec).filter(u=>e.arr_rec[u]==='cobrado').reduce((a,u)=>{const p=u.split('_');const c=clientes.find(x=>x.id===parseInt(p[2]));return a+(c?Number(c.importe):0);},0)
+        +Object.keys(e.arr_ext).filter(u=>e.arr_ext[u]==='cobrado').reduce((a,u)=>{const p=u.split('_');const ex=(getE(parseInt(p[1])).extra||[])[parseInt(p[2])];return a+(ex?ex.importe:0);},0);
+}
+
+function renderCobros(){
+  const e=getE(mesActual);
+  const act=clientes.filter(c=>c.activo==='activo');
+  let cob=0,pen=0;
+  act.forEach(c=>{if(e.cobros[c.id]==='cobrado')cob+=Number(c.importe);else pen+=Number(c.importe);});
+  const arrCob=calcArrCob(mesActual);const tot=cob+pen;
+  document.getElementById('tc-cob').textContent=pesos(cob);
+  document.getElementById('tc-pen').textContent=pesos(pen);
+  document.getElementById('tc-arr').textContent=pesos(arrCob);
+  document.getElementById('tc-pct').textContent=tot>0?Math.round(cob/tot*100)+'%':'0%';
+  document.getElementById('mes-lbl').textContent=MESES[mesActual];
+  const fa=document.getElementById('fil-area').value,fe=document.getElementById('fil-est').value;
+  const rows=act.filter(c=>{
+    if(fa&&c.area!==fa)return false;
+    const s=e.cobros[c.id]||'pendiente';
+    if(fe==='pendiente'&&s!=='pendiente')return false;
+    if(fe==='cobrado'&&s!=='cobrado')return false;
+    return true;
+  });
+  document.getElementById('tbody-cobros').innerHTML=rows.map(c=>{
+    const s=e.cobros[c.id]||'pendiente';
+    const btn=s==='cobrado'?`<button class="btn" style="font-size:12px;padding:4px 10px;width:auto" onclick="togCobro(${c.id})">Deshacer</button>`:`<button class="btn btn-ok" style="font-size:12px;padding:4px 10px;width:auto" onclick="togCobro(${c.id})">Marcar cobrado</button>`;
+    return`<tr><td style="font-weight:500">${c.nombre}</td><td><span class="badge bgr" style="font-size:10px">${GRUPOS[c.grupo]?.label||c.grupo}</span></td><td style="text-align:right;font-weight:500">${pesos(c.importe)}</td><td>${s==='cobrado'?'<span class="badge bg">Cobrado</span>':'<span class="badge ba">Pendiente</span>'}</td><td>${btn}</td></tr>`;
+  }).join('');
+}
+function togCobro(id){const e=getE(mesActual);e.cobros[id]=e.cobros[id]==='cobrado'?'pendiente':'cobrado';guardarMes(mesActual);renderAll();}
+
+function getPendAnt(m){
+  const rec=[],ext=[];
+  for(let i=3;i<m;i++){
+    const ei=getE(i);
+    clientes.forEach(c=>{
+      if((ei.cobros[c.id]||'pendiente')==='pendiente'){
+        const uid=`rec_${i}_${c.id}`;
+        let cobOtro=false;
+        for(let j=i+1;j<=m;j++){if(getE(j).arr_rec[uid]==='cobrado'){cobOtro=true;break;}}
+        rec.push({uid,mesO:i,cliente:c,importe:Number(c.importe),est:cobOtro?'cobrado_otro':(getE(m).arr_rec[uid]||'pendiente')});
+      }
+    });
+    (ei.extra||[]).forEach((x,xi)=>{
+      if(x.estado==='pendiente'){
+        const uid=`ext_${i}_${xi}`;
+        let cobOtro=false;
+        for(let j=i+1;j<=m;j++){if(getE(j).arr_ext[uid]==='cobrado'){cobOtro=true;break;}}
+        ext.push({uid,mesO:i,extra:x,importe:x.importe,est:cobOtro?'cobrado_otro':(getE(m).arr_ext[uid]||'pendiente')});
+      }
+    });
+  }
+  return{rec,ext};
+}
+
+function renderArrastres(){
+  if(mesActual===3){
+    ['arr-pend','arr-cob','arr-tot'].forEach(id=>document.getElementById(id).textContent='$0');
+    document.getElementById('lista-arr-rec').innerHTML='<div class="empty">Abril es el primer mes, sin arrastres</div>';
+    document.getElementById('lista-arr-ext').innerHTML='<div class="empty">Sin arrastres</div>';
+    return;
+  }
+  const {rec,ext}=getPendAnt(mesActual);
+  let pen=0,cob=0;
+  rec.forEach(r=>{if(r.est==='pendiente')pen+=r.importe;else if(r.est==='cobrado')cob+=r.importe;});
+  ext.forEach(r=>{if(r.est==='pendiente')pen+=r.importe;else if(r.est==='cobrado')cob+=r.importe;});
+  document.getElementById('arr-pend').textContent=pesos(pen);
+  document.getElementById('arr-cob').textContent=pesos(cob);
+  document.getElementById('arr-tot').textContent=pesos(pen+cob);
+  const rRow=(r,isExt)=>{
+    const nm=isExt?r.extra.tipo:r.cliente.nombre;
+    const sub=isExt?(r.extra.desc||''):(GRUPOS[r.cliente.grupo]?.label||'');
+    const orig=`<span class="badge bpurp">${MESES[r.mesO]}</span>`;
+    if(r.est==='cobrado_otro')return`<div class="arr-row"><div style="flex:1"><span style="font-weight:500">${nm}</span> ${orig}</div><span style="font-weight:500">${pesos(r.importe)}</span><span class="badge bg">Cobrado (otro mes)</span></div>`;
+    const fn=isExt?`toggleArrExt('${r.uid}')`:`toggleArrRec('${r.uid}')`;
+    const btn=r.est==='cobrado'?`<button class="btn" style="font-size:12px;padding:4px 10px;width:auto" onclick="${fn}">Deshacer</button>`:`<button class="btn btn-ok" style="font-size:12px;padding:4px 10px;width:auto" onclick="${fn}">Cobrado en ${MESES[mesActual]}</button>`;
+    return`<div class="arr-row"><div style="flex:1"><span style="font-weight:500">${nm}</span> ${orig} <span style="font-size:12px;color:#888">${sub}</span></div><span style="font-weight:500">${pesos(r.importe)}</span>${r.est==='cobrado'?'<span class="badge bg">Cobrado</span>':'<span class="badge ba">Pendiente</span>'}${btn}</div>`;
+  };
+  document.getElementById('lista-arr-rec').innerHTML=rec.length?rec.map(r=>rRow(r,false)).join(''):'<div class="empty">Sin pendientes</div>';
+  document.getElementById('lista-arr-ext').innerHTML=ext.length?ext.map(r=>rRow(r,true)).join(''):'<div class="empty">Sin pendientes</div>';
+}
+function toggleArrRec(uid){const e=getE(mesActual);e.arr_rec[uid]=e.arr_rec[uid]==='cobrado'?'pendiente':'cobrado';guardarMes(mesActual);renderAll();}
+function toggleArrExt(uid){const e=getE(mesActual);e.arr_ext[uid]=e.arr_ext[uid]==='cobrado'?'pendiente':'cobrado';guardarMes(mesActual);renderAll();}
+
+function renderTablero(){
+  const e=getE(mesActual);
+  const act=clientes.filter(c=>c.activo==='activo');
+  let total=0,hechas=0,html='';
+  Object.keys(GRUPOS).forEach(gk=>{
+    const g=GRUPOS[gk];const clis=act.filter(c=>c.grupo===gk);if(!clis.length)return;
+    html+=`<tr><td class="td-g" colspan="${g.tareas.length+1}">${g.label}</td></tr>`;
+    html+=`<tr><th class="th-n">Cliente</th>${g.tareas.map(tk=>`<th>${TLABEL[tk]}</th>`).join('')}</tr>`;
+    clis.forEach(c=>{
+      html+=`<tr><td class="td-n">${c.nombre}</td>`;
+      g.tareas.forEach(tk=>{const key=`${c.id}_${tk}`;const val=e.tareas[key]||'pendiente';total++;if(val==='hecho')hechas++;html+=`<td><button class="tc ${val}" onclick="togTarea('${key}')"></button></td>`;});
+      html+=`</tr>`;
+    });
+  });
+  document.getElementById('tablero').innerHTML=html;
+  document.getElementById('th').textContent=hechas;document.getElementById('tp').textContent=total-hechas;
+  document.getElementById('tt').textContent=total;document.getElementById('tpct').textContent=total>0?Math.round(hechas/total*100)+'%':'0%';
+}
+function togTarea(key){const e=getE(mesActual);e.tareas[key]=e.tareas[key]==='hecho'?'pendiente':'hecho';guardarMes(mesActual);renderAll();}
+
+function renderCliGrid(){
+  const q=(document.getElementById('buscar-cli').value||'').toLowerCase();
+  const fa=document.getElementById('fil-area-cli').value,fe=document.getElementById('fil-est-cli').value;
+  const f=clientes.filter(c=>{if(fa&&c.area!==fa)return false;if(fe&&c.activo!==fe)return false;return c.nombre.toLowerCase().includes(q)||(c.cuit||'').includes(q);});
+  document.getElementById('cant-cli').textContent=clientes.filter(c=>c.activo==='activo').length;
+  document.getElementById('cli-grid').innerHTML=f.map(c=>`
+    <div class="cli-card ${c.activo==='inactivo'?'inactivo':''}" onclick="abrirFicha(${c.id})">
+      <div style="width:36px;height:36px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:#185FA5;margin-bottom:8px">${ini(c.nombre)}</div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:2px">${c.nombre}</div>
+      <div style="font-size:11px;color:#888;margin-bottom:6px">${GRUPOS[c.grupo]?.label||c.grupo}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <span class="badge ${c.area==='Marketing'?'bb':'bgr'}">${c.area}</span>
+        ${c.activo==='inactivo'?'<span class="badge br">Baja</span>':''}
+        <span class="badge bg" style="font-size:10px">${pesos(c.importe)}/mes</span>
+      </div>
+    </div>`).join('')||'<div class="empty">Sin resultados</div>';
+}
+
+function abrirFicha(id){
+  const c=clientes.find(x=>x.id===id);if(!c)return;
+  document.getElementById('ficha-title').textContent=c.nombre;
+  const cobEst=getE(mesActual).cobros[c.id]||'pendiente';
+  let cumple='—';if(c.nac){const d=new Date(c.nac);cumple=`${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;}
+  const hist=(c.historial||[]).length?'<div style="margin-top:12px"><div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;margin-bottom:6px">Historial</div>'+(c.historial).map(h=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid #e8e8e0;font-size:12px"><span style="color:#888">${h.fecha}</span><span>${h.desc}</span></div>`).join('')+'</div>':'';
+  document.getElementById('ficha-body').innerHTML=`
+    <div style="width:48px;height:48px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500;color:#185FA5;margin-bottom:12px">${ini(c.nombre)}</div>
+    <div class="info-row"><span class="il">Grupo</span><span style="font-size:12px">${GRUPOS[c.grupo]?.label||c.grupo}</span></div>
+    <div class="info-row"><span class="il">Importe</span><span style="font-weight:500">${pesos(c.importe)}</span></div>
+    <div class="info-row"><span class="il">Estado</span><span><span class="badge ${c.activo==='activo'?'bg':'br'}">${c.activo==='activo'?'Activo':'Baja'}</span></span></div>
+    <div class="info-row"><span class="il">CUIT</span><span>${c.cuit||'—'}</span></div>
+    <div class="info-row"><span class="il">Celular</span><span>${c.celular||'—'}</span></div>
+    <div class="info-row"><span class="il">Email</span><span>${c.email||'—'}</span></div>
+    <div class="info-row"><span class="il">Cumpleaños</span><span>${cumple}</span></div>
+    ${c.notas?`<div class="info-row"><span class="il">Notas</span><span>${c.notas}</span></div>`:''}
+    <div class="info-row"><span class="il">Cobro ${MESES[mesActual]}</span><span><span class="badge ${cobEst==='cobrado'?'bg':'ba'}">${cobEst==='cobrado'?'Cobrado':'Pendiente'}</span></span></div>
+    ${hist}
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn ${cobEst==='cobrado'?'':'btn-ok'}" style="width:auto" onclick="togCobro(${c.id});abrirFicha(${c.id})">${cobEst==='cobrado'?'Deshacer cobro':'Marcar cobrado'}</button>
+      <button class="btn" style="width:auto" onclick="abrirForm(${c.id})">Editar</button>
+    </div>`;
+  document.getElementById('ficha-bg').classList.remove('modal-hidden');
+}
+function cerrarFicha(){document.getElementById('ficha-bg').classList.add('modal-hidden');}
+
+let formEditId=null;
+function abrirForm(id){
+  cerrarFicha();formEditId=id;
+  document.getElementById('form-title').textContent=id?'Editar cliente':'Nuevo cliente';
+  const c=id?clientes.find(x=>x.id===id):{};
+  document.getElementById('f-nombre').value=c.nombre||'';document.getElementById('f-cuit').value=c.cuit||'';
+  document.getElementById('f-area').value=c.area||'Contabilidad';document.getElementById('f-grupo').value=c.grupo||'basico';
+  document.getElementById('f-imp').value=c.importe||'';document.getElementById('f-activo').value=c.activo||'activo';
+  document.getElementById('f-cel').value=c.celular||'';document.getElementById('f-email').value=c.email||'';
+  document.getElementById('f-nac').value=c.nac||'';document.getElementById('f-inicio').value=c.inicio||'';
+  document.getElementById('f-notas').value=c.notas||'';
+  document.getElementById('form-bg').classList.remove('modal-hidden');
+}
+function cerrarForm(){document.getElementById('form-bg').classList.add('modal-hidden');formEditId=null;}
+
+async function guardarCliente(){
+  const nombre=document.getElementById('f-nombre').value.trim();if(!nombre){alert('Ingresá el nombre');return;}
+  const nuevoImp=parseFloat(document.getElementById('f-imp').value)||0;
+  const nuevoAct=document.getElementById('f-activo').value;
+  const nuevoGrupo=document.getElementById('f-grupo').value;
+  const hoy=new Date().toLocaleDateString('es-AR');
+  const datos={nombre,cuit:document.getElementById('f-cuit').value.trim(),area:document.getElementById('f-area').value,grupo:nuevoGrupo,importe:nuevoImp,activo:nuevoAct,celular:document.getElementById('f-cel').value.trim(),email:document.getElementById('f-email').value.trim(),nac:document.getElementById('f-nac').value,inicio:document.getElementById('f-inicio').value,notas:document.getElementById('f-notas').value.trim()};
+  if(formEditId){
+    const idx=clientes.findIndex(c=>c.id===formEditId);
+    if(idx>=0){
+      const v=clientes[idx];const cambios=[];
+      if(Number(v.importe)!==nuevoImp&&Number(v.importe)>0)cambios.push(`Honorario: ${pesos(v.importe)} → ${pesos(nuevoImp)}`);
+      if(v.activo!==nuevoAct)cambios.push(nuevoAct==='inactivo'?'Baja':'Reactivación');
+      if(v.grupo!==nuevoGrupo)cambios.push(`Servicio: ${GRUPOS[v.grupo]?.label} → ${GRUPOS[nuevoGrupo]?.label}`);
+      const hist=[...(v.historial||[])];
+      cambios.forEach(desc=>hist.push({fecha:hoy,desc}));
+      clientes[idx]={...v,...datos,historial:hist};
+      await sb.from('clientes').update({...datos,historial:hist}).eq('id',formEditId);
+      setSS('Guardado');
+    }
+  } else {
+    const {data}=await sb.from('clientes').insert({...datos,historial:[]}).select().single();
+    if(data)clientes.push(data);setSS('Guardado');
+  }
+  cerrarForm();renderAll();
+}
+
+function renderExtras(){
+  const e=getE(mesActual);const fil=document.getElementById('ex-fil').value;
+  const extra=e.extra||[];
+  const cob=extra.filter(x=>x.estado==='cobrado').reduce((a,x)=>a+x.importe,0);
+  const pen=extra.filter(x=>x.estado==='pendiente').reduce((a,x)=>a+x.importe,0);
+  document.getElementById('ex-cob').textContent=pesos(cob);document.getElementById('ex-pen').textContent=pesos(pen);
+  document.getElementById('ex-tot').textContent=pesos(cob+pen);document.getElementById('ex-cant').textContent=extra.length;
+  const rows=fil?extra.filter(x=>x.estado===fil):extra;
+  document.getElementById('lista-extra').innerHTML=!rows.length?'<div class="empty">Sin registros</div>':
+    '<div style="overflow-x:auto"><table><thead><tr><th>Tipo</th><th>Descripción</th><th style="text-align:right">Importe</th><th>Estado</th><th></th></tr></thead><tbody>'+
+    rows.map(x=>{const i=extra.indexOf(x);return`<tr><td><span class="badge bb">${x.tipo}</span></td><td style="color:#888">${x.desc||'—'}</td><td style="text-align:right;font-weight:500">${pesos(x.importe)}</td><td><span class="badge ${x.estado==='cobrado'?'bg':'ba'}">${x.estado==='cobrado'?'Cobrado':'Pendiente'}</span></td><td style="display:flex;gap:4px">${x.estado==='pendiente'?`<button class="btn btn-ok" style="font-size:11px;padding:3px 8px;width:auto" onclick="togExtra(${i})">Cobrado</button>`:`<button class="btn" style="font-size:11px;padding:3px 8px;width:auto" onclick="togExtra(${i})">Deshacer</button>`}<button class="btn" style="font-size:11px;padding:3px 7px;width:auto;color:#E24B4A;border-color:#F09595" onclick="elimExtra(${i})">×</button></td></tr>`;}).join('')+
+    '</tbody></table></div>';
+}
+function agregarExtra(){
+  const imp=parseFloat(document.getElementById('ex-imp').value)||0;if(!imp){alert('Ingresá importe');return;}
+  const e=getE(mesActual);
+  e.extra.push({tipo:document.getElementById('ex-tipo').value,importe:imp,desc:document.getElementById('ex-desc').value.trim(),estado:document.querySelector('input[name="ex-est"]:checked').value});
+  document.getElementById('ex-imp').value='';document.getElementById('ex-desc').value='';
+  document.querySelector('input[name="ex-est"][value="pendiente"]').checked=true;
+  guardarMes(mesActual);renderAll();
+}
+function togExtra(i){const e=getE(mesActual);e.extra[i].estado=e.extra[i].estado==='cobrado'?'pendiente':'cobrado';guardarMes(mesActual);renderAll();}
+function elimExtra(i){const e=getE(mesActual);e.extra.splice(i,1);guardarMes(mesActual);renderAll();}
+
+function renderGastos(){
+  const e=getE(mesActual);
+  document.getElementById('tot-ge').textContent=pesos((e.ge||[]).reduce((a,g)=>a+g.importe,0));
+  document.getElementById('tot-gp').textContent=pesos((e.gp||[]).reduce((a,g)=>a+g.importe,0));
+  document.getElementById('sueldo-d').textContent=pesos(e.sueldo||0);
+  const rnd=(tbody,empty,arr,elim)=>{
+    if(!arr||!arr.length){document.getElementById(tbody).innerHTML='';document.getElementById(empty).style.display='block';return;}
+    document.getElementById(empty).style.display='none';
+    document.getElementById(tbody).innerHTML=arr.map((g,i)=>`<tr><td>${g.cat}</td><td style="text-align:right;font-weight:500">${pesos(g.importe)}</td><td><span class="badge ${g.pag?'bg':'ba'}">${g.pag?'OK':'Pend.'}</span></td><td><button class="btn" style="font-size:11px;padding:2px 7px;width:auto;color:#E24B4A;border-color:#F09595" onclick="${elim}(${i})">×</button></td></tr>`).join('');
+  };
+  rnd('tbody-ge','empty-ge',e.ge,'elimGE');rnd('tbody-gp','empty-gp',e.gp,'elimGP');
+}
+function guardarSueldo(){const v=parseFloat(document.getElementById('inp-sueldo').value)||0;getE(mesActual).sueldo=v;document.getElementById('inp-sueldo').value='';guardarMes(mesActual);renderAll();}
+function agregarGE(){const imp=parseFloat(document.getElementById('ge-imp').value)||0;if(!imp)return;const e=getE(mesActual);e.ge.push({cat:document.getElementById('ge-cat').value,importe:imp,pag:document.getElementById('ge-pag').checked});document.getElementById('ge-imp').value='';document.getElementById('ge-pag').checked=false;guardarMes(mesActual);renderAll();}
+function elimGE(i){const e=getE(mesActual);e.ge.splice(i,1);guardarMes(mesActual);renderAll();}
+function agregarGP(){const imp=parseFloat(document.getElementById('gp-imp').value)||0;if(!imp)return;const e=getE(mesActual);e.gp.push({cat:document.getElementById('gp-cat').value,importe:imp,pag:document.getElementById('gp-pag').checked});document.getElementById('gp-imp').value='';document.getElementById('gp-pag').checked=false;guardarMes(mesActual);renderAll();}
+function elimGP(i){const e=getE(mesActual);e.gp.splice(i,1);guardarMes(mesActual);renderAll();}
+
+function renderResumen(){
+  const e=getE(mesActual);
+  const act=clientes.filter(c=>c.activo==='activo');
+  const cobRec=act.reduce((a,c)=>e.cobros[c.id]==='cobrado'?a+Number(c.importe):a,0);
+  const cobExt=(e.extra||[]).filter(x=>x.estado==='cobrado').reduce((a,x)=>a+x.importe,0);
+  const cobArr=calcArrCob(mesActual);
+  const ingTotal=cobRec+cobExt+cobArr;
+  const ge=(e.ge||[]).reduce((a,g)=>a+g.importe,0);
+  const ut=ingTotal-ge;const su=e.sueldo||0;const fin=ut-su;
+  document.getElementById('r-cob').textContent=pesos(cobRec);document.getElementById('r-arr').textContent=pesos(cobArr);
+  document.getElementById('r-ext').textContent=pesos(cobExt);document.getElementById('r-ge').textContent=pesos(ge);
+  document.getElementById('r-ut').textContent=pesos(ut);document.getElementById('r-su').textContent=pesos(su);
+  document.getElementById('r-fin').textContent=pesos(fin);
+  document.getElementById('r-fin').parentElement.className='mc '+(fin>=0?'ok':'bad');
+  const items=[
+    {l:'Cobros recurrentes del mes',v:cobRec,cls:'ok'},
+    {l:'Cobros de meses anteriores',v:cobArr,cls:'purp'},
+    {l:'Ingresos extra cobrados',v:cobExt,cls:'ok'},
+    {l:'Total ingresos',v:ingTotal,cls:'ok',b:true},
+    {l:'Gastos empresa',v:-ge,cls:ge>0?'bad':''},
+    {l:'Utilidad operativa',v:ut,cls:ut>=0?'ok':'bad',b:true},
+    {l:'Mi sueldo',v:-su},
+    {l:'Resultado final TUEM',v:fin,cls:fin>=0?'ok':'bad',b:true},
+  ];
+  document.getElementById('flujo').innerHTML=items.map(i=>`<div class="ovw"><div class="ovw-l" style="${i.b?'font-weight:500':''}">${i.l}</div><div class="ovw-v ${i.cls||''}">${i.v<0?'-':'+'}${pesos(Math.abs(i.v))}</div></div>`).join('');
+  const pendMes=act.filter(c=>(e.cobros[c.id]||'pendiente')==='pendiente');
+  document.getElementById('pend-mes').innerHTML=pendMes.length
+    ?'<table><thead><tr><th>Cliente</th><th>Grupo</th><th style="text-align:right">Importe</th></tr></thead><tbody>'+pendMes.map(c=>`<tr><td style="font-weight:500">${c.nombre}</td><td style="font-size:12px;color:#888">${GRUPOS[c.grupo]?.label||''}</td><td style="text-align:right;color:#BA7517;font-weight:500">${pesos(c.importe)}</td></tr>`).join('')+`<tr><td colspan="2" style="font-weight:500">Total</td><td style="text-align:right;font-weight:500;color:#BA7517">${pesos(pendMes.reduce((a,c)=>a+Number(c.importe),0))}</td></tr></tbody></table>`
+    :'<div class="empty" style="color:#1D9E75">Todo cobrado este mes</div>';
+  if(mesActual>3){
+    const {rec,ext}=getPendAnt(mesActual);
+    const pendH=[...rec.filter(r=>r.est==='pendiente'),...ext.filter(r=>r.est==='pendiente')];
+    document.getElementById('pend-hist').innerHTML=pendH.length
+      ?pendH.map(r=>{const nm=r.cliente?r.cliente.nombre:r.extra.tipo;return`<div class="ovw"><div class="ovw-l"><span style="font-weight:500">${nm}</span> <span class="badge bpurp" style="margin-left:4px">${MESES[r.mesO]}</span></div><div class="ovw-v bad">${pesos(r.importe)}</div></div>`;}).join('')
+      :'<div class="empty" style="color:#1D9E75">Sin arrastres pendientes</div>';
+  } else document.getElementById('pend-hist').innerHTML='<div class="empty">Primer mes de la app</div>';
+  const mesN=mesActual+1;
+  const cumples=clientes.filter(c=>{if(!c.nac)return false;const d=new Date(c.nac);return(d.getMonth()+1)===mesN;});
+  document.getElementById('cumples').innerHTML=cumples.length?cumples.map(c=>{const d=new Date(c.nac);return`<div class="ovw"><div class="ovw-l">${c.nombre}</div><div style="font-size:13px;color:#888">${d.getDate()}/${mesN}</div></div>`;}).join(''):'<div class="empty">Sin cumpleaños</div>';
+}
+
+cargarDatos();
+</script>
+</body>
+</html>
