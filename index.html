@@ -25,18 +25,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ct{font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px}
 table{width:100%;font-size:13px;border-collapse:collapse}
 th{text-align:left;font-weight:500;color:#888;font-size:12px;padding:6px 8px;border-bottom:0.5px solid #e8e8e0}
-td{padding:8px;border-bottom:0.5px solid #e8e8e0;color:#1a1a1a}
+td{padding:8px;border-bottom:0.5px solid #e8e8e0;color:#1a1a1a;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#fafaf8}
 .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
 .bg{background:#EAF3DE;color:#3B6D11}.br{background:#FCEBEB;color:#A32D2D}
 .ba{background:#FAEEDA;color:#854F0B}.bb{background:#E6F1FB;color:#185FA5}
 .bgr{background:#f0f0ec;color:#666}.bpurp{background:#EEEDFE;color:#3C3489}
+.bpar{background:#FFF3E0;color:#E65100}
 .btn{display:inline-block;font-size:13px;padding:7px 14px;border-radius:8px;border:0.5px solid #ccc;background:transparent;color:#1a1a1a;cursor:pointer}
 .btn:hover{background:#f0f0ec}
 .btn-prim{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
 .btn-prim:hover{opacity:.85}
 .btn-ok{background:#EAF3DE;color:#3B6D11;border-color:#C0DD97}
+.btn-par{background:#FFF3E0;color:#E65100;border-color:#FFCC80}
 input,select,textarea{font-size:13px;padding:7px 10px;border-radius:8px;border:0.5px solid #ccc;background:#fff;color:#1a1a1a;font-family:inherit;width:100%}
 input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
 .field{margin-bottom:10px}
@@ -70,6 +72,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
 .arr-row:last-child{border-bottom:none}
 .saving{position:fixed;bottom:1rem;right:1rem;background:#1a1a1a;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .3s;z-index:200;pointer-events:none}
 .saving.show{opacity:1}
+.prog-wrap{background:#e8e8e0;border-radius:4px;height:5px;width:100%;margin-top:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;transition:width .3s}
+.parcial-input{display:none;margin-top:6px;gap:4px;flex-wrap:wrap;align-items:center}
+.parcial-input.show{display:flex}
+.fc-check{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;color:#666;white-space:nowrap}
+.fc-check input{width:auto;cursor:pointer}
 @media(max-width:600px){.two-col{grid-template-columns:1fr}.mg{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -106,10 +114,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
   <button onclick="tab('resumen',this)">Resumen</button>
 </div>
 
+<!-- COBROS -->
 <div id="sec-cobros" class="sec active">
   <div class="mg">
     <div class="mc ok"><div class="ml">Cobrado</div><div class="mv" id="tc-cob">$0</div></div>
     <div class="mc warn"><div class="ml">Pendiente del mes</div><div class="mv" id="tc-pen">$0</div></div>
+    <div class="mc" style="border:0.5px solid #FFCC80"><div class="ml">Cobrado parcial</div><div class="mv" id="tc-par" style="color:#E65100">$0</div></div>
     <div class="mc" style="border:0.5px solid #CECBF6"><div class="ml">Cobrado meses ant.</div><div class="mv" id="tc-arr" style="color:#3C3489">$0</div></div>
     <div class="mc"><div class="ml">% cobrado</div><div class="mv" id="tc-pct">0%</div></div>
   </div>
@@ -117,14 +127,24 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div class="ct" style="margin-bottom:0">Clientes activos — <span id="mes-lbl">Abril</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <select id="fil-area" onchange="renderCobros()" style="width:auto;font-size:12px;padding:4px 8px"><option value="">Todas las áreas</option><option value="Marketing">Marketing</option><option value="Contabilidad">Contabilidad</option></select>
-        <select id="fil-est" onchange="renderCobros()" style="width:auto;font-size:12px;padding:4px 8px"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="cobrado">Cobrados</option></select>
+        <select id="fil-area" onchange="renderCobros()" style="width:auto;font-size:12px;padding:4px 8px">
+          <option value="">Todas las áreas</option><option value="Marketing">Marketing</option><option value="Contabilidad">Contabilidad</option>
+        </select>
+        <select id="fil-est" onchange="renderCobros()" style="width:auto;font-size:12px;padding:4px 8px">
+          <option value="">Todos</option><option value="pendiente">Pendientes</option><option value="cobrado">Cobrados</option><option value="parcial">Parciales</option>
+        </select>
       </div>
     </div>
-    <div style="overflow-x:auto"><table><thead><tr><th>Cliente</th><th>Grupo</th><th style="text-align:right">Importe</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="tbody-cobros"></tbody></table></div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Cliente</th><th>Grupo</th><th style="text-align:right">Honorario</th><th style="text-align:right">Cobrado</th><th>FC</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody id="tbody-cobros"></tbody>
+    </table>
+    </div>
   </div>
 </div>
 
+<!-- PENDIENTES ANTERIORES -->
 <div id="sec-arrastres" class="sec">
   <div class="mg">
     <div class="mc warn"><div class="ml">Sin cobrar de meses ant.</div><div class="mv" id="arr-pend">$0</div></div>
@@ -136,6 +156,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
   <div class="card"><div class="ct">Ingresos extra pendientes</div><div id="lista-arr-ext"><div class="empty">Sin pendientes</div></div></div>
 </div>
 
+<!-- TAREAS -->
 <div id="sec-tareas" class="sec">
   <div class="mg">
     <div class="mc ok"><div class="ml">Completadas</div><div class="mv" id="th">0</div></div>
@@ -155,6 +176,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
   </div>
 </div>
 
+<!-- CLIENTES -->
 <div id="sec-clientes" class="sec">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
     <div class="ct" style="margin-bottom:0">Clientes — <span id="cant-cli">0</span> activos</div>
@@ -197,6 +219,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
   </div>
 </div>
 
+<!-- EXTRAS -->
 <div id="sec-extras" class="sec">
   <div class="mg">
     <div class="mc ok"><div class="ml">Cobrado</div><div class="mv" id="ex-cob">$0</div></div>
@@ -227,6 +250,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
   </div>
 </div>
 
+<!-- GASTOS -->
 <div id="sec-gastos" class="sec">
   <div class="mg">
     <div class="mc bad"><div class="ml">Gastos empresa</div><div class="mv" id="tot-ge">$0</div></div>
@@ -264,6 +288,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
   </div>
 </div>
 
+<!-- RESUMEN -->
 <div id="sec-resumen" class="sec">
   <div class="mg">
     <div class="mc ok"><div class="ml">Cobros del mes</div><div class="mv" id="r-cob">$0</div></div>
@@ -281,6 +306,22 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
 </div>
 </div>
 
+<!-- Modal cobro parcial -->
+<div id="modal-parcial-bg" class="modal-bg modal-hidden">
+  <div class="modal" style="max-width:360px">
+    <div style="font-size:16px;font-weight:500;margin-bottom:12px" id="modal-parcial-title">Cobro parcial</div>
+    <div style="font-size:13px;color:#888;margin-bottom:12px" id="modal-parcial-sub"></div>
+    <div class="field">
+      <label>Monto cobrado ($)</label>
+      <input type="number" id="modal-parcial-monto" placeholder="0">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-prim" style="flex:1" onclick="confirmarParcial()">Confirmar</button>
+      <button class="btn" style="width:auto" onclick="cerrarModalParcial()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="saving" id="saving-toast">Guardando...</div>
 
 <script>
@@ -291,6 +332,7 @@ const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','
 let mesActual=3;
 const pesos=n=>'$'+Math.round(n).toLocaleString('es-AR');
 const ini=s=>s?s.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2):'??';
+
 const TLABEL={mkt:'MKT',af:'AF',vep:'VEP Mono',rec:'Recordatorio',fac:'Facturación',fac2:'Fact. completa',aut:'Autónomo',pib:'Planilla IB',iibb:'DJ IIBB',iva:'DJ IVA',sue:'Sueldos',pp:'Plan pagos'};
 const GRUPOS={
   marketing:{label:'Marketing',tareas:['mkt']},
@@ -304,10 +346,13 @@ const GRUPOS={
   sociedades:{label:'Sociedades',tareas:['aut','iibb','iva','sue']},
   asesoria_fin:{label:'Asesoría Financiera',tareas:['af']},
 };
+
 let clientes=[];
 let estadoMeses={};
 let saveTimer=null;
+let parcialClienteId=null;
 
+// ---- SUPABASE ----
 async function cargarDatos(){
   setSS('Cargando...');
   const {data:clis}=await sb.from('clientes').select('*').order('id');
@@ -319,11 +364,29 @@ async function cargarDatos(){
 }
 
 function getE(m){
-  if(!estadoMeses[m]) estadoMeses[m]={mes:m,cobros:{},tareas:{},extra:[],ge:[],gp:[],sueldo:0,arr_rec:{},arr_ext:{}};
+  if(!estadoMeses[m]) estadoMeses[m]={mes:m,cobros:{},tareas:{},extra:[],ge:[],gp:[],sueldo:0,arr_rec:{},arr_ext:{},fc:{}};
   const e=estadoMeses[m];
   if(!e.cobros)e.cobros={};if(!e.tareas)e.tareas={};if(!e.extra)e.extra=[];
   if(!e.ge)e.ge=[];if(!e.gp)e.gp=[];if(!e.arr_rec)e.arr_rec={};if(!e.arr_ext)e.arr_ext={};
+  if(!e.fc)e.fc={};
   return e;
+}
+
+// cobros[id] puede ser: 'pendiente' | 'cobrado' | {estado:'parcial', monto:N}
+function getCobEst(e,id){return e.cobros[id]||'pendiente';}
+function getCobMonto(e,c){
+  const v=e.cobros[c.id];
+  if(!v||v==='pendiente') return 0;
+  if(v==='cobrado') return Number(c.importe);
+  if(typeof v==='object'&&v.estado==='parcial') return v.monto||0;
+  return 0;
+}
+function getCobEstStr(e,id){
+  const v=e.cobros[id];
+  if(!v||v==='pendiente') return 'pendiente';
+  if(v==='cobrado') return 'cobrado';
+  if(typeof v==='object'&&v.estado==='parcial') return 'parcial';
+  return 'pendiente';
 }
 
 function setSS(t){document.getElementById('sync-status').textContent=t;}
@@ -334,7 +397,7 @@ async function guardarMes(m){
   clearTimeout(saveTimer);showToast();
   saveTimer=setTimeout(async()=>{
     const e=getE(m);
-    const p={mes:m,cobros:e.cobros,tareas:e.tareas,extra:e.extra,ge:e.ge,gp:e.gp,sueldo:e.sueldo||0,arr_rec:e.arr_rec,arr_ext:e.arr_ext};
+    const p={mes:m,cobros:e.cobros,tareas:e.tareas,extra:e.extra,ge:e.ge,gp:e.gp,sueldo:e.sueldo||0,arr_rec:e.arr_rec,arr_ext:e.arr_ext,fc:e.fc};
     if(e.id){await sb.from('estado_mes').update(p).eq('id',e.id);}
     else{const {data}=await sb.from('estado_mes').insert(p).select().single();if(data){estadoMeses[m]={...data,...p};estadoMeses[m].id=data.id;}}
     setSS('Guardado '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
@@ -356,43 +419,134 @@ function calcArrCob(m){
         +Object.keys(e.arr_ext).filter(u=>e.arr_ext[u]==='cobrado').reduce((a,u)=>{const p=u.split('_');const ex=(getE(parseInt(p[1])).extra||[])[parseInt(p[2])];return a+(ex?ex.importe:0);},0);
 }
 
+/* ---- COBROS ---- */
 function renderCobros(){
   const e=getE(mesActual);
   const act=clientes.filter(c=>c.activo==='activo');
-  let cob=0,pen=0;
-  act.forEach(c=>{if(e.cobros[c.id]==='cobrado')cob+=Number(c.importe);else pen+=Number(c.importe);});
-  const arrCob=calcArrCob(mesActual);const tot=cob+pen;
+  let cob=0,pen=0,par=0;
+  act.forEach(c=>{
+    const est=getCobEstStr(e,c.id);
+    const monto=getCobMonto(e,c);
+    if(est==='cobrado') cob+=Number(c.importe);
+    else if(est==='parcial'){par+=monto;pen+=(Number(c.importe)-monto);}
+    else pen+=Number(c.importe);
+  });
+  const arrCob=calcArrCob(mesActual);
+  const tot=cob+pen+par;
   document.getElementById('tc-cob').textContent=pesos(cob);
   document.getElementById('tc-pen').textContent=pesos(pen);
+  document.getElementById('tc-par').textContent=pesos(par);
   document.getElementById('tc-arr').textContent=pesos(arrCob);
-  document.getElementById('tc-pct').textContent=tot>0?Math.round(cob/tot*100)+'%':'0%';
+  document.getElementById('tc-pct').textContent=tot>0?Math.round((cob+par)/tot*100)+'%':'0%';
   document.getElementById('mes-lbl').textContent=MESES[mesActual];
-  const fa=document.getElementById('fil-area').value,fe=document.getElementById('fil-est').value;
+
+  const fa=document.getElementById('fil-area').value;
+  const fe=document.getElementById('fil-est').value;
   const rows=act.filter(c=>{
     if(fa&&c.area!==fa)return false;
-    const s=e.cobros[c.id]||'pendiente';
-    if(fe==='pendiente'&&s!=='pendiente')return false;
-    if(fe==='cobrado'&&s!=='cobrado')return false;
+    const s=getCobEstStr(e,c.id);
+    if(fe&&s!==fe)return false;
     return true;
   });
+
   document.getElementById('tbody-cobros').innerHTML=rows.map(c=>{
-    const s=e.cobros[c.id]||'pendiente';
-    const btn=s==='cobrado'?`<button class="btn" style="font-size:12px;padding:4px 10px;width:auto" onclick="togCobro(${c.id})">Deshacer</button>`:`<button class="btn btn-ok" style="font-size:12px;padding:4px 10px;width:auto" onclick="togCobro(${c.id})">Marcar cobrado</button>`;
-    return`<tr><td style="font-weight:500">${c.nombre}</td><td><span class="badge bgr" style="font-size:10px">${GRUPOS[c.grupo]?.label||c.grupo}</span></td><td style="text-align:right;font-weight:500">${pesos(c.importe)}</td><td>${s==='cobrado'?'<span class="badge bg">Cobrado</span>':'<span class="badge ba">Pendiente</span>'}</td><td>${btn}</td></tr>`;
+    const est=getCobEstStr(e,c.id);
+    const monto=getCobMonto(e,c);
+    const imp=Number(c.importe);
+    const fcVal=e.fc[c.id]||false;
+    const pct=imp>0?Math.round(monto/imp*100):0;
+
+    let estadoBadge='';
+    if(est==='cobrado') estadoBadge='<span class="badge bg">Cobrado</span>';
+    else if(est==='parcial') estadoBadge=`<span class="badge bpar">Parcial ${pct}%</span>`;
+    else estadoBadge='<span class="badge ba">Pendiente</span>';
+
+    let progBar='';
+    if(est==='parcial'){
+      progBar=`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:#E65100"></div></div>`;
+    }
+
+    const fcCheck=`<label class="fc-check" onclick="event.stopPropagation()"><input type="checkbox" ${fcVal?'checked':''} onchange="togFC(${c.id},this.checked)" style="width:auto"> FC</label>`;
+
+    let btns='';
+    if(est==='cobrado'){
+      btns=`<button class="btn" style="font-size:11px;padding:3px 8px;width:auto" onclick="togCobro(${c.id},'reset')">Deshacer</button>`;
+    } else {
+      btns=`<button class="btn btn-ok" style="font-size:11px;padding:3px 8px;width:auto" onclick="togCobro(${c.id},'cobrado')">Cobrado</button>
+            <button class="btn btn-par" style="font-size:11px;padding:3px 8px;width:auto" onclick="abrirParcial(${c.id})">Parcial</button>`;
+      if(est==='parcial') btns+=`<button class="btn" style="font-size:11px;padding:3px 8px;width:auto" onclick="togCobro(${c.id},'reset')">Deshacer</button>`;
+    }
+
+    return`<tr>
+      <td style="font-weight:500">${c.nombre}</td>
+      <td><span class="badge bgr" style="font-size:10px">${GRUPOS[c.grupo]?.label||c.grupo}</span></td>
+      <td style="text-align:right;font-weight:500">${pesos(imp)}</td>
+      <td style="text-align:right">${est==='pendiente'?'—':'<span style="font-weight:500;color:'+(est==='cobrado'?'#1D9E75':'#E65100')+'">'+pesos(monto)+'</span>'}${progBar}</td>
+      <td>${fcCheck}</td>
+      <td>${estadoBadge}</td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap">${btns}</td>
+    </tr>`;
   }).join('');
 }
-function togCobro(id){const e=getE(mesActual);e.cobros[id]=e.cobros[id]==='cobrado'?'pendiente':'cobrado';guardarMes(mesActual);renderAll();}
 
+function togCobro(id,accion){
+  const e=getE(mesActual);
+  if(accion==='cobrado') e.cobros[id]='cobrado';
+  else if(accion==='reset') e.cobros[id]='pendiente';
+  guardarMes(mesActual);renderAll();
+}
+
+function togFC(id,val){
+  const e=getE(mesActual);
+  e.fc[id]=val;
+  guardarMes(mesActual);
+}
+
+function abrirParcial(id){
+  parcialClienteId=id;
+  const c=clientes.find(x=>x.id===id);
+  const e=getE(mesActual);
+  const montoActual=getCobMonto(e,c);
+  document.getElementById('modal-parcial-title').textContent='Cobro parcial — '+c.nombre;
+  document.getElementById('modal-parcial-sub').textContent='Honorario total: '+pesos(c.importe);
+  document.getElementById('modal-parcial-monto').value=montoActual||'';
+  document.getElementById('modal-parcial-bg').classList.remove('modal-hidden');
+}
+
+function cerrarModalParcial(){
+  document.getElementById('modal-parcial-bg').classList.add('modal-hidden');
+  parcialClienteId=null;
+}
+
+function confirmarParcial(){
+  if(!parcialClienteId) return;
+  const monto=parseFloat(document.getElementById('modal-parcial-monto').value)||0;
+  if(!monto){alert('Ingresá un monto');return;}
+  const c=clientes.find(x=>x.id===parcialClienteId);
+  if(monto>=Number(c.importe)){
+    // Si paga el total, marcar como cobrado completo
+    getE(mesActual).cobros[parcialClienteId]='cobrado';
+  } else {
+    getE(mesActual).cobros[parcialClienteId]={estado:'parcial',monto};
+  }
+  guardarMes(mesActual);
+  cerrarModalParcial();
+  renderAll();
+}
+
+/* ---- ARRASTRES ---- */
 function getPendAnt(m){
   const rec=[],ext=[];
   for(let i=3;i<m;i++){
     const ei=getE(i);
     clientes.forEach(c=>{
-      if((ei.cobros[c.id]||'pendiente')==='pendiente'){
+      const est=getCobEstStr(ei,c.id);
+      if(est!=='cobrado'){
         const uid=`rec_${i}_${c.id}`;
         let cobOtro=false;
         for(let j=i+1;j<=m;j++){if(getE(j).arr_rec[uid]==='cobrado'){cobOtro=true;break;}}
-        rec.push({uid,mesO:i,cliente:c,importe:Number(c.importe),est:cobOtro?'cobrado_otro':(getE(m).arr_rec[uid]||'pendiente')});
+        const pendiente=est==='parcial'?Number(c.importe)-getCobMonto(ei,c):Number(c.importe);
+        rec.push({uid,mesO:i,cliente:c,importe:pendiente,est:cobOtro?'cobrado_otro':(getE(m).arr_rec[uid]||'pendiente')});
       }
     });
     (ei.extra||[]).forEach((x,xi)=>{
@@ -436,6 +590,7 @@ function renderArrastres(){
 function toggleArrRec(uid){const e=getE(mesActual);e.arr_rec[uid]=e.arr_rec[uid]==='cobrado'?'pendiente':'cobrado';guardarMes(mesActual);renderAll();}
 function toggleArrExt(uid){const e=getE(mesActual);e.arr_ext[uid]=e.arr_ext[uid]==='cobrado'?'pendiente':'cobrado';guardarMes(mesActual);renderAll();}
 
+/* ---- TABLERO ---- */
 function renderTablero(){
   const e=getE(mesActual);
   const act=clientes.filter(c=>c.activo==='activo');
@@ -456,6 +611,7 @@ function renderTablero(){
 }
 function togTarea(key){const e=getE(mesActual);e.tareas[key]=e.tareas[key]==='hecho'?'pendiente':'hecho';guardarMes(mesActual);renderAll();}
 
+/* ---- CLIENTES ---- */
 function renderCliGrid(){
   const q=(document.getElementById('buscar-cli').value||'').toLowerCase();
   const fa=document.getElementById('fil-area-cli').value,fe=document.getElementById('fil-est-cli').value;
@@ -477,7 +633,13 @@ function renderCliGrid(){
 function abrirFicha(id){
   const c=clientes.find(x=>x.id===id);if(!c)return;
   document.getElementById('ficha-title').textContent=c.nombre;
-  const cobEst=getE(mesActual).cobros[c.id]||'pendiente';
+  const e=getE(mesActual);
+  const est=getCobEstStr(e,c.id);
+  const monto=getCobMonto(e,c);
+  let cobBadge='';
+  if(est==='cobrado') cobBadge='<span class="badge bg">Cobrado</span>';
+  else if(est==='parcial') cobBadge=`<span class="badge bpar">Parcial — ${pesos(monto)} de ${pesos(c.importe)}</span>`;
+  else cobBadge='<span class="badge ba">Pendiente</span>';
   let cumple='—';if(c.nac){const d=new Date(c.nac);cumple=`${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;}
   const hist=(c.historial||[]).length?'<div style="margin-top:12px"><div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;margin-bottom:6px">Historial</div>'+(c.historial).map(h=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid #e8e8e0;font-size:12px"><span style="color:#888">${h.fecha}</span><span>${h.desc}</span></div>`).join('')+'</div>':'';
   document.getElementById('ficha-body').innerHTML=`
@@ -490,10 +652,14 @@ function abrirFicha(id){
     <div class="info-row"><span class="il">Email</span><span>${c.email||'—'}</span></div>
     <div class="info-row"><span class="il">Cumpleaños</span><span>${cumple}</span></div>
     ${c.notas?`<div class="info-row"><span class="il">Notas</span><span>${c.notas}</span></div>`:''}
-    <div class="info-row"><span class="il">Cobro ${MESES[mesActual]}</span><span><span class="badge ${cobEst==='cobrado'?'bg':'ba'}">${cobEst==='cobrado'?'Cobrado':'Pendiente'}</span></span></div>
+    <div class="info-row"><span class="il">Cobro ${MESES[mesActual]}</span><span>${cobBadge}</span></div>
     ${hist}
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-      <button class="btn ${cobEst==='cobrado'?'':'btn-ok'}" style="width:auto" onclick="togCobro(${c.id});abrirFicha(${c.id})">${cobEst==='cobrado'?'Deshacer cobro':'Marcar cobrado'}</button>
+      ${est==='cobrado'
+        ?`<button class="btn" style="width:auto" onclick="togCobro(${c.id},'reset');abrirFicha(${c.id})">Deshacer cobro</button>`
+        :`<button class="btn btn-ok" style="width:auto" onclick="togCobro(${c.id},'cobrado');abrirFicha(${c.id})">Marcar cobrado</button>
+          <button class="btn btn-par" style="width:auto" onclick="cerrarFicha();abrirParcial(${c.id})">Parcial</button>`
+      }
       <button class="btn" style="width:auto" onclick="abrirForm(${c.id})">Editar</button>
     </div>`;
   document.getElementById('ficha-bg').classList.remove('modal-hidden');
@@ -542,6 +708,7 @@ async function guardarCliente(){
   cerrarForm();renderAll();
 }
 
+/* ---- EXTRAS ---- */
 function renderExtras(){
   const e=getE(mesActual);const fil=document.getElementById('ex-fil').value;
   const extra=e.extra||[];
@@ -566,6 +733,7 @@ function agregarExtra(){
 function togExtra(i){const e=getE(mesActual);e.extra[i].estado=e.extra[i].estado==='cobrado'?'pendiente':'cobrado';guardarMes(mesActual);renderAll();}
 function elimExtra(i){const e=getE(mesActual);e.extra.splice(i,1);guardarMes(mesActual);renderAll();}
 
+/* ---- GASTOS ---- */
 function renderGastos(){
   const e=getE(mesActual);
   document.getElementById('tot-ge').textContent=pesos((e.ge||[]).reduce((a,g)=>a+g.importe,0));
@@ -584,10 +752,11 @@ function elimGE(i){const e=getE(mesActual);e.ge.splice(i,1);guardarMes(mesActual
 function agregarGP(){const imp=parseFloat(document.getElementById('gp-imp').value)||0;if(!imp)return;const e=getE(mesActual);e.gp.push({cat:document.getElementById('gp-cat').value,importe:imp,pag:document.getElementById('gp-pag').checked});document.getElementById('gp-imp').value='';document.getElementById('gp-pag').checked=false;guardarMes(mesActual);renderAll();}
 function elimGP(i){const e=getE(mesActual);e.gp.splice(i,1);guardarMes(mesActual);renderAll();}
 
+/* ---- RESUMEN ---- */
 function renderResumen(){
   const e=getE(mesActual);
   const act=clientes.filter(c=>c.activo==='activo');
-  const cobRec=act.reduce((a,c)=>e.cobros[c.id]==='cobrado'?a+Number(c.importe):a,0);
+  const cobRec=act.reduce((a,c)=>a+getCobMonto(e,c),0);
   const cobExt=(e.extra||[]).filter(x=>x.estado==='cobrado').reduce((a,x)=>a+x.importe,0);
   const cobArr=calcArrCob(mesActual);
   const ingTotal=cobRec+cobExt+cobArr;
@@ -609,10 +778,20 @@ function renderResumen(){
     {l:'Resultado final TUEM',v:fin,cls:fin>=0?'ok':'bad',b:true},
   ];
   document.getElementById('flujo').innerHTML=items.map(i=>`<div class="ovw"><div class="ovw-l" style="${i.b?'font-weight:500':''}">${i.l}</div><div class="ovw-v ${i.cls||''}">${i.v<0?'-':'+'}${pesos(Math.abs(i.v))}</div></div>`).join('');
-  const pendMes=act.filter(c=>(e.cobros[c.id]||'pendiente')==='pendiente');
+
+  // Pendientes del mes (incluyendo parciales)
+  const pendMes=act.filter(c=>{const s=getCobEstStr(e,c.id);return s==='pendiente'||s==='parcial';});
   document.getElementById('pend-mes').innerHTML=pendMes.length
-    ?'<table><thead><tr><th>Cliente</th><th>Grupo</th><th style="text-align:right">Importe</th></tr></thead><tbody>'+pendMes.map(c=>`<tr><td style="font-weight:500">${c.nombre}</td><td style="font-size:12px;color:#888">${GRUPOS[c.grupo]?.label||''}</td><td style="text-align:right;color:#BA7517;font-weight:500">${pesos(c.importe)}</td></tr>`).join('')+`<tr><td colspan="2" style="font-weight:500">Total</td><td style="text-align:right;font-weight:500;color:#BA7517">${pesos(pendMes.reduce((a,c)=>a+Number(c.importe),0))}</td></tr></tbody></table>`
+    ?'<table><thead><tr><th>Cliente</th><th>Grupo</th><th style="text-align:right">Honorario</th><th style="text-align:right">Pendiente</th></tr></thead><tbody>'+
+      pendMes.map(c=>{
+        const s=getCobEstStr(e,c.id);
+        const pend=s==='parcial'?Number(c.importe)-getCobMonto(e,c):Number(c.importe);
+        const badge=s==='parcial'?'<span class="badge bpar" style="font-size:10px">Parcial</span>':'';
+        return`<tr><td style="font-weight:500">${c.nombre} ${badge}</td><td style="font-size:12px;color:#888">${GRUPOS[c.grupo]?.label||''}</td><td style="text-align:right;color:#888">${pesos(c.importe)}</td><td style="text-align:right;color:#BA7517;font-weight:500">${pesos(pend)}</td></tr>`;
+      }).join('')+
+      `<tr><td colspan="3" style="font-weight:500">Total pendiente</td><td style="text-align:right;font-weight:500;color:#BA7517">${pesos(pendMes.reduce((a,c)=>{const s=getCobEstStr(e,c.id);return a+(s==='parcial'?Number(c.importe)-getCobMonto(e,c):Number(c.importe));},0))}</td></tr></tbody></table>`
     :'<div class="empty" style="color:#1D9E75">Todo cobrado este mes</div>';
+
   if(mesActual>3){
     const {rec,ext}=getPendAnt(mesActual);
     const pendH=[...rec.filter(r=>r.est==='pendiente'),...ext.filter(r=>r.est==='pendiente')];
@@ -620,6 +799,7 @@ function renderResumen(){
       ?pendH.map(r=>{const nm=r.cliente?r.cliente.nombre:r.extra.tipo;return`<div class="ovw"><div class="ovw-l"><span style="font-weight:500">${nm}</span> <span class="badge bpurp" style="margin-left:4px">${MESES[r.mesO]}</span></div><div class="ovw-v bad">${pesos(r.importe)}</div></div>`;}).join('')
       :'<div class="empty" style="color:#1D9E75">Sin arrastres pendientes</div>';
   } else document.getElementById('pend-hist').innerHTML='<div class="empty">Primer mes de la app</div>';
+
   const mesN=mesActual+1;
   const cumples=clientes.filter(c=>{if(!c.nac)return false;const d=new Date(c.nac);return(d.getMonth()+1)===mesN;});
   document.getElementById('cumples').innerHTML=cumples.length?cumples.map(c=>{const d=new Date(c.nac);return`<div class="ovw"><div class="ovw-l">${c.nombre}</div><div style="font-size:13px;color:#888">${d.getDate()}/${mesN}</div></div>`;}).join(''):'<div class="empty">Sin cumpleaños</div>';
