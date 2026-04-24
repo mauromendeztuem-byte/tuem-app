@@ -304,10 +304,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
         <div class="field"><label>Concepto</label><select id="ge-cat"><option>Alquiler oficina</option><option>Expensas oficina</option><option>Luz / servicios</option><option>Telecentro</option><option>Teléfono</option><option>Monotributo TUEM</option><option>Publicidad / plataformas</option><option>Diseñadora gráfica</option><option>Editor de videos</option><option>Comisiones</option><option>Otro</option></select></div>
         <div class="field"><label>Importe ($)</label><input type="number" id="ge-imp" placeholder="0"></div>
         <div class="field"><label>Vencimiento (opcional)</label><input type="date" id="ge-venc"></div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><input type="checkbox" id="ge-pag" style="width:auto"><label for="ge-pag" style="font-size:13px;cursor:pointer;width:auto">Ya pagado</label></div>
         <button class="btn btn-prim" style="width:100%" onclick="agregarGE()">Agregar</button>
       </div>
-      <div class="card"><div class="ct">Listado empresa</div><table><thead><tr><th>Concepto</th><th>Vence</th><th style="text-align:right">Importe</th><th>Est.</th><th></th></tr></thead><tbody id="tbody-ge"></tbody></table><div id="empty-ge" class="empty">Sin gastos</div></div>
+      <div class="card"><div class="ct">Listado empresa</div><table><thead><tr><th>Concepto</th><th>Vence</th><th style="text-align:right">Importe</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="tbody-ge"></tbody></table><div id="empty-ge" class="empty">Sin gastos</div></div>
     </div>
     <div>
       <div class="card">
@@ -315,10 +314,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
         <div class="field"><label>Concepto</label><select id="gp-cat"><option>Alquiler</option><option>Expensas</option><option>Luz</option><option>Telecentro</option><option>Celular</option><option>Obra social</option><option>Seguro auto / casa</option><option>Tarjeta Santander</option><option>Préstamo Banco Ciudad</option><option>Pao (colaboradora)</option><option>Recitales / ocio</option><option>Otro</option></select></div>
         <div class="field"><label>Importe ($)</label><input type="number" id="gp-imp" placeholder="0"></div>
         <div class="field"><label>Vencimiento (opcional)</label><input type="date" id="gp-venc"></div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><input type="checkbox" id="gp-pag" style="width:auto"><label for="gp-pag" style="font-size:13px;cursor:pointer;width:auto">Ya pagado</label></div>
         <button class="btn btn-prim" style="width:100%" onclick="agregarGP()">Agregar</button>
       </div>
-      <div class="card"><div class="ct">Listado personal</div><table><thead><tr><th>Concepto</th><th>Vence</th><th style="text-align:right">Importe</th><th>Est.</th><th></th></tr></thead><tbody id="tbody-gp"></tbody></table><div id="empty-gp" class="empty">Sin gastos</div></div>
+      <div class="card"><div class="ct">Listado personal</div><table><thead><tr><th>Concepto</th><th>Vence</th><th style="text-align:right">Importe</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="tbody-gp"></tbody></table><div id="empty-gp" class="empty">Sin gastos</div></div>
     </div>
   </div>
 </div>
@@ -566,16 +564,6 @@ function abrirParcial(id){
   document.getElementById('modal-parcial-monto').value=ma||'';
   document.getElementById('modal-parcial-bg').classList.remove('modal-hidden');
 }
-function cerrarModalParcial(){document.getElementById('modal-parcial-bg').classList.add('modal-hidden');parcialClienteId=null;}
-function confirmarParcial(){
-  if(!parcialClienteId)return;
-  const monto=parseFloat(document.getElementById('modal-parcial-monto').value)||0;
-  if(!monto){alert('Ingresá un monto');return;}
-  const c=clientes.find(x=>x.id===parcialClienteId);
-  getE(mesActual).cobros[parcialClienteId]=monto>=Number(c.importe)?'cobrado':{estado:'parcial',monto};
-  guardarMes(mesActual);cerrarModalParcial();renderAll();
-}
-
 /* ---- ARRASTRES ---- */
 function getPendAnt(m){
   const rec=[],ext=[];
@@ -897,23 +885,91 @@ function renderGastos(){
     if(!a.venc)return 1;if(!b.venc)return -1;
     return new Date(a.venc)-new Date(b.venc);
   };
-  const rnd=(tbody,empty,arr,elim)=>{
+  const rnd=(tbody,empty,arr,tipo)=>{
     if(!arr||!arr.length){document.getElementById(tbody).innerHTML='';document.getElementById(empty).style.display='block';return;}
     document.getElementById(empty).style.display='none';
-    const sorted=[...arr].sort(sortVenc);
-    document.getElementById(tbody).innerHTML=sorted.map((g,i)=>{
-      const orig=arr.indexOf(g);
-      const urgente=esCercano(g.venc);
-      return`<tr class="${urgente?'venc-urgente':''}"><td>${g.cat}${urgente?' ⚠️':''}</td><td style="font-size:12px;color:${urgente?'#E65100':'#888'}">${formatFecha(g.venc)}</td><td style="text-align:right;font-weight:500">${pesos(g.importe)}</td><td><span class="badge ${g.pag?'bg':'ba'}">${g.pag?'OK':'Pend.'}</span></td><td><button class="btn" style="font-size:11px;padding:2px 7px;width:auto;color:#E24B4A;border-color:#F09595" onclick="${elim}(${orig})">×</button></td></tr>`;
+    const sorted=[...arr].map((g,i)=>({...g,_orig:i})).sort(sortVenc);
+    document.getElementById(tbody).innerHTML=sorted.map(g=>{
+      const i=g._orig;const urgente=esCercano(g.venc);
+      const est=g.pag==='pagado'?'pagado':g.pag==='parcial'?'parcial':'pendiente';
+      const montoPag=g.montoPag||0;
+      const pct=g.importe>0?Math.round(montoPag/g.importe*100):0;
+      let badge='',btns='',prog='';
+      if(est==='pagado'){
+        badge='<span class="badge bg">Pagado</span>';
+        btns=`<button class="btn" style="font-size:11px;padding:2px 7px;width:auto" onclick="togPagoGasto('${tipo}',${i},'reset')">Deshacer</button>`;
+      } else if(est==='parcial'){
+        badge=`<span class="badge bpar">Parcial ${pct}%</span>`;
+        prog=`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:#E65100"></div></div>`;
+        btns=`<button class="btn btn-ok" style="font-size:11px;padding:2px 7px;width:auto" onclick="togPagoGasto('${tipo}',${i},'pagado')">Pagado</button><button class="btn btn-par" style="font-size:11px;padding:2px 7px;width:auto" onclick="abrirParcialGasto('${tipo}',${i})">Parcial</button><button class="btn" style="font-size:11px;padding:2px 7px;width:auto" onclick="togPagoGasto('${tipo}',${i},'reset')">Deshacer</button>`;
+      } else {
+        badge='<span class="badge ba">Pendiente</span>';
+        btns=`<button class="btn btn-ok" style="font-size:11px;padding:2px 7px;width:auto" onclick="togPagoGasto('${tipo}',${i},'pagado')">Pagado</button><button class="btn btn-par" style="font-size:11px;padding:2px 7px;width:auto" onclick="abrirParcialGasto('${tipo}',${i})">Parcial</button>`;
+      }
+      return`<tr class="${urgente?'venc-urgente':''}">
+        <td>${g.cat}${urgente?' ⚠️':''}</td>
+        <td style="font-size:12px;color:${urgente?'#E65100':'#888'}">${formatFecha(g.venc)}</td>
+        <td style="text-align:right"><span style="font-weight:500">${pesos(g.importe)}</span>${prog}</td>
+        <td>${badge}</td>
+        <td style="display:flex;gap:3px;flex-wrap:wrap;align-items:center">
+          ${btns}
+          <button class="btn" style="font-size:11px;padding:2px 7px;width:auto;color:#E24B4A;border-color:#F09595" onclick="elimG('${tipo}',${i})">×</button>
+        </td>
+      </tr>`;
     }).join('');
   };
-  rnd('tbody-ge','empty-ge',e.ge,'elimGE');rnd('tbody-gp','empty-gp',e.gp,'elimGP');
+  rnd('tbody-ge','empty-ge',e.ge,'ge');rnd('tbody-gp','empty-gp',e.gp,'gp');
 }
 function guardarSueldo(){const v=parseFloat(document.getElementById('inp-sueldo').value)||0;getE(mesActual).sueldo=v;document.getElementById('inp-sueldo').value='';guardarMes(mesActual);renderAll();}
-function agregarGE(){const imp=parseFloat(document.getElementById('ge-imp').value)||0;if(!imp)return;const e=getE(mesActual);e.ge.push({cat:document.getElementById('ge-cat').value,importe:imp,venc:document.getElementById('ge-venc').value||null,pag:document.getElementById('ge-pag').checked});document.getElementById('ge-imp').value='';document.getElementById('ge-venc').value='';document.getElementById('ge-pag').checked=false;guardarMes(mesActual);renderAll();}
+function agregarGE(){const imp=parseFloat(document.getElementById('ge-imp').value)||0;if(!imp)return;const e=getE(mesActual);e.ge.push({cat:document.getElementById('ge-cat').value,importe:imp,venc:document.getElementById('ge-venc').value||null,pag:'pendiente',montoPag:0});document.getElementById('ge-imp').value='';document.getElementById('ge-venc').value='';guardarMes(mesActual);renderAll();}
 function elimGE(i){const e=getE(mesActual);e.ge.splice(i,1);guardarMes(mesActual);renderAll();}
-function agregarGP(){const imp=parseFloat(document.getElementById('gp-imp').value)||0;if(!imp)return;const e=getE(mesActual);e.gp.push({cat:document.getElementById('gp-cat').value,importe:imp,venc:document.getElementById('gp-venc').value||null,pag:document.getElementById('gp-pag').checked});document.getElementById('gp-imp').value='';document.getElementById('gp-venc').value='';document.getElementById('gp-pag').checked=false;guardarMes(mesActual);renderAll();}
+function agregarGP(){const imp=parseFloat(document.getElementById('gp-imp').value)||0;if(!imp)return;const e=getE(mesActual);e.gp.push({cat:document.getElementById('gp-cat').value,importe:imp,venc:document.getElementById('gp-venc').value||null,pag:'pendiente',montoPag:0});document.getElementById('gp-imp').value='';document.getElementById('gp-venc').value='';guardarMes(mesActual);renderAll();}
 function elimGP(i){const e=getE(mesActual);e.gp.splice(i,1);guardarMes(mesActual);renderAll();}
+
+function elimG(tipo,i){const e=getE(mesActual);e[tipo].splice(i,1);guardarMes(mesActual);renderAll();}
+
+function togPagoGasto(tipo,i,accion){
+  const e=getE(mesActual);const g=e[tipo][i];
+  if(accion==='pagado'){g.pag='pagado';g.montoPag=g.importe;}
+  else if(accion==='reset'){g.pag='pendiente';g.montoPag=0;}
+  guardarMes(mesActual);renderAll();
+}
+
+let parcialGastoTipo=null,parcialGastoIdx=null;
+function abrirParcialGasto(tipo,i){
+  parcialGastoTipo=tipo;parcialGastoIdx=i;
+  const e=getE(mesActual);const g=e[tipo][i];
+  document.getElementById('modal-parcial-title').textContent='Pago parcial — '+g.cat;
+  document.getElementById('modal-parcial-sub').textContent='Total: '+pesos(g.importe);
+  document.getElementById('modal-parcial-monto').value=g.montoPag||'';
+  document.getElementById('modal-parcial-bg').classList.remove('modal-hidden');
+}
+
+// Override confirmarParcial to handle both cobros and gastos
+function confirmarParcial(){
+  // Si es gasto
+  if(parcialGastoTipo!==null){
+    const monto=parseFloat(document.getElementById('modal-parcial-monto').value)||0;
+    if(!monto){alert('Ingresá un monto');return;}
+    const e=getE(mesActual);const g=e[parcialGastoTipo][parcialGastoIdx];
+    if(monto>=g.importe){g.pag='pagado';g.montoPag=g.importe;}
+    else{g.pag='parcial';g.montoPag=monto;}
+    guardarMes(mesActual);cerrarModalParcial();renderAll();
+    return;
+  }
+  // Si es cobro de cliente
+  if(!parcialClienteId)return;
+  const monto=parseFloat(document.getElementById('modal-parcial-monto').value)||0;
+  if(!monto){alert('Ingresá un monto');return;}
+  const c=clientes.find(x=>x.id===parcialClienteId);
+  getE(mesActual).cobros[parcialClienteId]=monto>=Number(c.importe)?'cobrado':{estado:'parcial',monto};
+  guardarMes(mesActual);cerrarModalParcial();renderAll();
+}
+
+function cerrarModalParcial(){
+  document.getElementById('modal-parcial-bg').classList.add('modal-hidden');
+  parcialClienteId=null;parcialGastoTipo=null;parcialGastoIdx=null;
+}
 
 /* ---- RESUMEN ---- */
 function getIngresosmes(m){
