@@ -110,9 +110,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#999}
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <select id="sel-mes" onchange="cambiarMes()" style="width:auto;font-size:13px;padding:5px 10px">
-      <option value="3" selected>Abril 2026</option>
-      <option value="4">Mayo 2026</option>
-      <option value="5">Junio 2026</option>
+      <option value="5" selected>Junio 2026</option>
+      
       <option value="6">Julio 2026</option>
       <option value="7">Agosto 2026</option>
       <option value="8">Septiembre 2026</option>
@@ -396,7 +395,7 @@ const SUPABASE_URL='https://vwkgleeysddiiatfafpk.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a2dsZWV5c2RkaWlhdGZhZnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3ODM5MDcsImV4cCI6MjA5MTM1OTkwN30.pPg-tcRaelQWaZarr8PkMVdl18qjjKoNF1t5TK27lc4';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-let mesActual=3;
+let mesActual=5;
 const pesos=n=>'$'+Math.round(n).toLocaleString('es-AR');
 const ini=s=>s?s.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2):'??';
 
