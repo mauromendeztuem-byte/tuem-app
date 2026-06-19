@@ -472,9 +472,11 @@ async function guardarMes(m){
   saveTimer=setTimeout(async()=>{
     const e=getE(m);
     const p={mes:m,cobros:e.cobros,tareas:e.tareas,extra:e.extra,ge:e.ge,gp:e.gp,sueldo:e.sueldo||0,arr_rec:e.arr_rec,arr_ext:e.arr_ext,fc:e.fc,obs:e.obs};
-    if(e.id){await sb.from('estado_mes').update(p).eq('id',e.id);}
-    else{const {data}=await sb.from('estado_mes').insert(p).select().single();if(data){estadoMeses[m]={...data,...p};estadoMeses[m].id=data.id;}}
-    setSS('Guardado '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));hideToast();
+    let err=null;
+    if(e.id){const r=await sb.from('estado_mes').update(p).eq('id',e.id);err=r.error;}
+    else{const {data,error}=await sb.from('estado_mes').insert(p).select().single();err=error;if(data){estadoMeses[m]={...data,...p};estadoMeses[m].id=data.id;}}
+    if(err){setSS('❌ Error al guardar — recargá la página');console.error('guardarMes error:',err.message,err.details);hideToast();}
+    else{setSS('Guardado '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));hideToast();}
   },800);
 }
 
